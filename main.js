@@ -2,6 +2,7 @@ var mainState = {
   preload: function() {
     game.load.image('bird', 'assets/bird.png');
     game.load.image('pipe', 'assets/pipe.png');
+    game.load.audio('jump', 'assets/jump.wav');
   },
 
   create: function() {
@@ -16,6 +17,8 @@ var mainState = {
 
     this.bird.body.gravity.y = 1000;
 
+    this.jumpSound = game.add.audio('jump');
+
     var spaceKey = game.input.keyboard.addKey(
       Phaser.Keyboard.SPACEBAR
     );
@@ -27,6 +30,9 @@ var mainState = {
     this.labelScore = game.add.text(20, 20, "0",
       { font: "30px Arial", fill: "#ffffff" });
 
+     // Move the anchor to the left and downward
+     this.bird.anchor.setTo(-0.2, 0.5);
+
   },
 
   update: function() {
@@ -34,12 +40,28 @@ var mainState = {
       this.restartGame();
 
     game.physics.arcade.overlap(
-      this.bird, this.pipes, this.restartGame, null, this);
+      this.bird, this.pipes, this.hitPipe, null, this);
+
+    if (this.bird.angle < 20)
+    this.bird.angle += 1;
+
   },
 
 
   jump: function() {
       this.bird.body.velocity.y = -350;
+      this.jumpSound.play();
+
+      var animation = game.add.tween(this.bird);
+      // Change the angle of the bird to -20° in 100 milliseconds
+      animation.to({angle: -20}, 100);
+      animation.start();
+
+      // rewritten in a single line
+      // game.add.tween(this.bird).to({angle: -20}, 100).start();
+
+      if (this.bird.alive == false)
+        return;
   },
 
   restartGame: function() {
@@ -73,8 +95,26 @@ var mainState = {
 
     this.score += 1;
 
-    this.labelScore.text = this.score;  
+    this.labelScore.text = this.score;
   },
+
+  hitPipe: function() {
+    // If the bird has already hit a pipe, do nothing
+    // It means the bird is already falling off the screen
+    if (this.bird.alive == false)
+        return;
+
+    // Set the alive property of the bird to false
+    this.bird.alive = false;
+
+    // Prevent new pipes from appearing
+    game.time.events.remove(this.timer);
+
+    // Go through all the pipes, and stop their movement
+    this.pipes.forEach(function(p){
+        p.body.velocity.x = 0;
+    }, this);
+},
 };
 
 var game = new Phaser.Game(400, 490);
